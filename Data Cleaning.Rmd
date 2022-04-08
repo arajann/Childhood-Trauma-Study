@@ -1,0 +1,30 @@
+---
+title: "Data Cleaning and Exploratory Analysis"
+author: "Anand Rajan"
+date: "4/8/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(haven)
+```
+
+
+## Data Import
+
+```{r}
+midus_1 <- read_sav("./data/M2_P1_SURVEY_N4963_20200720.sav") %>% 
+  select(M2ID,B1PAGE_M2,B1PRSEX,B1PF7A,B1SA62A,B1SA62B,B1SA62C,B1SA62D,B1SA62E,B1SA62F,B1SA62G,B1SA62H,B1SA62I,B1SA62J,B1PTSEI)
+
+midus_3 <- read_sav("./data/M2_P3_BTACT_N4512_20211123.sav") %>% 
+         select(M2ID,B3TCOMPZ3,B3TEMZ3)
+midus_4 <-
+  da29282.0001 %>% 
+  select(M2ID,B4QCT_EA,B4QCT_EN,B4QCT_MD,B4QCT_PA,B4QCT_SA,B4QCT_PN)
+```
+
