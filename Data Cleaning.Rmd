@@ -12,6 +12,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(tidyverse)
 library(haven)
+library(readr)
+library(stringr)
 ```
 
 
@@ -19,12 +21,64 @@ library(haven)
 
 ```{r}
 midus_1 <- read_sav("./data/M2_P1_SURVEY_N4963_20200720.sav") %>% 
-  select(M2ID,B1PAGE_M2,B1PRSEX,B1PF7A,B1SA62A,B1SA62B,B1SA62C,B1SA62D,B1SA62E,B1SA62F,B1SA62G,B1SA62H,B1SA62I,B1SA62J,B1PTSEI)
+  select(M2ID,B1PAGE_M2,B1PRSEX,B1PF7A,B1SA62A,B1SA62B,B1SA62C,B1SA62D,B1SA62E,B1SA62F,B1SA62G,B1SA62H,B1SA62I,B1SA62J,B1PTSEI,B1PB1)
 
 midus_3 <- read_sav("./data/M2_P3_BTACT_N4512_20211123.sav") %>% 
-         select(M2ID,B3TCOMPZ3,B3TEMZ3)
+         select(M2ID,B3TCOMPZ3,B3TEMZ3,B3TEFZ3) %>% 
+        na.omit()
+
+
 midus_4 <-
   da29282.0001 %>% 
-  select(M2ID,B4QCT_EA,B4QCT_EN,B4QCT_MD,B4QCT_PA,B4QCT_SA,B4QCT_PN)
+  select(M2ID,B4QCT_EA,B4QCT_EN,B4QCT_MD,B4QCT_PA,B4QCT_SA,B4QCT_PN) %>% 
+  mutate(
+    threat = B4QCT_EA + B4QCT_PA + B4QCT_SA,
+    deprivation = B4QCT_EN + B4QCT_MD + B4QCT_PN
+  ) %>% 
+  select(M2ID, threat,deprivation)
+
+milwaukee <- read_tsv("./data/MKE Data.tsv") %>% 
+  select(M2ID,BACRAGE,BACRSEX,BACB1,BACF7A,BACAS62A,BACAS62B,BACAS62C,BACAS62D,BACAS62E,BACAS62F,BACAS62G,BACAS62H,BACAS62I,BACAS62J)
+
 ```
+
+
+```{r}
+midus_df1 <- dplyr::inner_join(midus_4,midus_3)
+
+midus_df2 <-dplyr::left_join(midus_df1,midus_1)
+
+midus_df <- dplyr::left_join(midus_df2,milwaukee)
+```
+
+```{r}
+midus <-
+midus_df %>% 
+  mutate(
+    age = coalesce(BACRAGE,B1PAGE_M2),
+    sex = coalesce(B1PRSEX,BACRSEX),
+    race=coalesce(B1PF7A,BACF7A),
+    education = coalesce(B1PB1,BACB1),
+    tranquilizer = coalesce(B1SA62A,BACAS62A),
+    stimulants = coalesce(B1SA62B,BACAS62B),
+    painkillers = coalesce(B1SA62C,BACAS62C),
+    depressants = coalesce(B1SA62D,BACAS62D),
+    inhallants = coalesce(B1SA62E,BACAS62E),
+    marijuana = coalesce(B1SA62F,BACAS62F),
+    cocaine = coalesce(B1SA62G,BACAS62G),
+    hallucinogens = coalesce(B1SA62H,BACAS62H),
+    heroin = coalesce(B1SA62J,BACAS62J)
+  ) %>% 
+  rename(
+    composite_cognition = B3TCOMPZ3,
+    episodic_memory = B3TEMZ3,
+    executive_func = B3TEFZ3,
+    ses_index = B1PTSEI
+  ) %>% 
+  select(M2ID,age,sex,race,education,tranquilizer,stimulants,painkillers,depressants,inhallants,marijuana,cocaine,hallucinogens,heroin,composite_cognition,episodic_memory,executive_func,ses_index)
+
+
+str(midus$tranquilizer)
+```
+
 
