@@ -1,0 +1,362 @@
+---
+title: "Exploratory Analysis"
+author: "Anand Rajan"
+date: "4/8/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+
+
+
+```{r warning=FALSE, echo=FALSE}
+midus_1 <- read_sav("./data/M2_P1_SURVEY_N4963_20200720.sav") %>% 
+  select(M2ID,B1PAGE_M2,B1PRSEX,B1PF7A,B1SA62A,B1SA62B,B1SA62C,B1SA62D,B1SA62E,B1SA62F,B1SA62G,B1SA62H,B1SA62I,B1SA62J,B1PTSEI,B1PB1)
+
+midus_3 <- read_sav("./data/M2_P3_BTACT_N4512_20211123.sav") %>% 
+         select(M2ID,B3TCOMPZ3,B3TEMZ3,B3TEFZ3) %>% 
+        na.omit()
+
+midus_4 <-
+  da29282.0001 %>% 
+  select(M2ID,B4QCT_EA,B4QCT_EN,B4QCT_MD,B4QCT_PA,B4QCT_SA,B4QCT_PN) %>% 
+  mutate(
+    threat = B4QCT_EA + B4QCT_PA + B4QCT_SA,
+    deprivation = B4QCT_EN + B4QCT_MD + B4QCT_PN
+  ) %>% 
+  select(M2ID, threat,deprivation)
+
+milwaukee <- read_tsv("./data/MKE Data.tsv") %>% 
+  select(M2ID,BACRAGE,BACRSEX,BACB1,BACF7A,BACAS62A,BACAS62B,BACAS62C,BACAS62D,BACAS62E,BACAS62F,BACAS62G,BACAS62H,BACAS62I,BACAS62J)
+
+midus_df1 <- dplyr::inner_join(midus_4,midus_3)
+midus_df2 <-dplyr::left_join(midus_df1,midus_1)
+midus_df <- dplyr::left_join(midus_df2,milwaukee)
+```
+
+```{r echo=false}
+midus <-
+midus_df %>% 
+  mutate(
+    age = coalesce(BACRAGE,B1PAGE_M2),
+    sex = coalesce(B1PRSEX,BACRSEX),
+    race=coalesce(B1PF7A,BACF7A),
+    education = coalesce(B1PB1,BACB1),
+    tranquilizer = coalesce(B1SA62A,BACAS62A),
+    stimulants = coalesce(B1SA62B,BACAS62B),
+    painkillers = coalesce(B1SA62C,BACAS62C),
+    depressants = coalesce(B1SA62D,BACAS62D),
+    inhallants = coalesce(B1SA62E,BACAS62E),
+    marijuana = coalesce(B1SA62F,BACAS62F),
+    cocaine = coalesce(B1SA62G,BACAS62G),
+    hallucinogens = coalesce(B1SA62H,BACAS62H),
+    heroin = coalesce(B1SA62J,BACAS62J)
+  ) %>% 
+  rename(
+    composite_cognition = B3TCOMPZ3,
+    episodic_memory = B3TEMZ3,
+    executive_func = B3TEFZ3,
+    ses_index = B1PTSEI
+  ) %>% 
+  filter(
+    race %in% (1:6)
+  ) %>% 
+  mutate(
+    race = as.factor(race),
+    sex = as.factor(sex),
+    education = as.factor(education),
+    tranquilizer = as.factor(tranquilizer),
+    stimulants = as.factor(stimulants),
+    painkillers = as.factor(painkillers),
+    depressants = as.factor(depressants),
+    inhallants = as.factor(inhallants),
+    marijuana = as.factor(marijuana),
+    cocaine = as.factor(hallucinogens),
+    hallucinogens = as.factor(hallucinogens),
+    heroin = as.factor(heroin)
+  ) %>% 
+  mutate(
+    tranquilizer = recode(tranquilizer,
+                           '1' = "Yes",
+                           '2' = "No"),
+    stimulants = recode(stimulants,
+                           '1' = "Yes",
+                           '2' = "No"),
+    painkillers = recode(painkillers,
+                           '1' = "Yes",
+                           '2' = "No"),
+    depressants = recode(depressants,
+                           '1' = "Yes",
+                           '2' = "No"),
+    inhallants = recode(inhallants,
+                           '1' = "Yes",
+                           '2' = "No"),
+    marijuana = recode(marijuana,
+                           '1' = "Yes",
+                           '2' = "No"),
+    cocaine = recode(cocaine,
+                           '1' = "Yes",
+                           '2' = "No"),
+    hallucinogens = recode(hallucinogens,
+                           '1' = "Yes",
+                           '2' = "No"),
+    heroin = recode(heroin,
+                           '1' = "Yes",
+                           '2' = "No")
+  ) %>% 
+  select(age,sex,race,education,tranquilizer,stimulants,painkillers,depressants,inhallants,marijuana,cocaine,hallucinogens,heroin,composite_cognition,episodic_memory,executive_func,threat,deprivation) %>% 
+  na.omit() %>% 
+  janitor::clean_names()
+```
+
+
+After importing and cleaning data, we have 1097 observations with full data. Now we will conduct exploratory analysis looking at the different variables/covariates.
+
+
+# Exploratory Analysis
+
+```{r}
+midus %>% 
+  knitr::kable()
+```
+
+
+## Cognition
+
+To start, we will be looking out our outcome variable cognition. We can evaluate cognition through three different variables. We have composite cognition z scores, then cognition z scores for episodic memory and executive functioning. We will look at the distributions of all three outcome variables to potentially inform us of what sort of analysese we can run. Moreover we will look at univariate statistics for each of the cognition scores. 
+
+```{r}
+ggplot(midus,aes(x=composite_cognition)) + geom_density(color = "blue")
+shapiro.test(midus$composite_cognition)
+```
+
+From creating the density plot and running the Shapiro Wilk Normality test, we conclude that the distribution of composite cognition score for the population is in fact normal. 
+
+
+```{r}
+midus %>% 
+  summarize(
+    mean_composite = mean(composite_cognition),
+    median_composite=median(composite_cognition),
+    sd = sd(composite_cognition),
+    min = min(composite_cognition),
+    max = max(composite_cognition)
+  )
+```
+The mean composite cognitive function z score is 0.114, whereas the median composite z score is 0.128. There is however a high standard deviation of 0.934. The minimum is -2.47 while the maximum z-score is 3.05112. We will now look at episodic memory.
+
+
+```{r}
+ggplot(midus,aes(x=episodic_memory)) + geom_histogram()
+shapiro.test(midus$episodic_memory)
+```
+
+From evaluating the histogram and running the shapiro wilks test, we conclude the distribution for episodic memory is NOT normal, but instead slightly right skewed.
+
+```{r}
+midus %>% 
+  summarize(
+    mean_episodic = mean(episodic_memory),
+    median_episodic=median(episodic_memory),
+    sd = sd(episodic_memory),
+    min = min(episodic_memory),
+    max = max(episodic_memory)
+  )
+```
+
+
+The mean episodic memory z score is 0.07, while the median is 0.013. The difference in the mean and median confirms the distribution of the data as being right skewed. Furthermore as indicated by the standard deviation and the range, the variability in z scores is quite large. 
+```{r}
+ggplot(midus,aes(x=executive_func)) + geom_density(alpha=0.5)
+shapiro.test(midus$executive_func)
+```
+
+
+As indicated by the density plot and the shapiro-wilks test, the distribution for z-scores for executive function is NOT normal, and slightly left-skewed. Let us further explore the univariate statistics for executive function.
+
+
+```{r}
+midus %>% 
+  summarize(
+    mean_exec = mean(executive_func),
+    median_exec=median(executive_func),
+    sd = sd(executive_func),
+    min = min(executive_func),
+    max = max(executive_func)
+  )
+```
+
+The mean executive function z-score is 0.159, while the median is 0.174. Thus the significant difference between the median and mean indicates the left skewness. Like with composite cognition and episodic memory, the variability in the z-scores are quite high. this indicates that there is likely a presence of confounding, and that an adjusted analysis is going to be essential. 
+
+### Chilhood Trauma
+
+Childhood Trauma is broken down into 6 components scores. These components are emotional abuse,emotional neglect, minimization/denial,physical abuse, physical neglect, and sexual abuse. For this study, we will be categorizing trauma into two strata, Threat and Deprivation. Threat is the sum of the scores for emotional abuse, physical abuse and sexual abuse. While deprivation is the sum of emotional neglect, minimization/denial, and parental neglect. As you can see the division of the two strata make sense as one threat in the purview of childhood trauma refers to abuse, while deprivation refers to neglect. Now lets dive into each category. 
+
+```{r}
+ggplot(midus,aes(x=threat)) + geom_histogram(color = "blue")
+shapiro.test(midus$threat)
+```
+
+
+From the histogram, and confirming via shapiro wilks test, the distribution of threat scores is NOT normal, but right skewed. Lets look at summary statistics for threat scores.
+
+```{r}
+midus %>% 
+  summarize(
+    mean_threat = mean(threat),
+    median_threat=median(threat),
+    sd = sd(threat),
+    min = min(threat),
+    max = max(threat)
+  )
+```
+
+Since the data is so right skewed, we will use the median to evaluate the center of the distribution. The median threat score is 18. As illustrated in the histogram, the variability in threat scores are quite high - standard deviation is equal to 9.093 and the range is 60. Lets evaluate deprivation now. 
+
+
+```{r}
+ggplot(midus,aes(x=deprivation)) + geom_histogram(color = "blue")
+shapiro.test(midus$deprivation)
+```
+
+As we can see from the histogram and confirmed by the shapiro-wilks test, the distribution for deprivation scores is heavily right skewed. Lets look at summary statistics for deprivation statistics 
+
+
+
+```{r}
+midus %>% 
+  summarize(
+    mean_deprivation = mean(deprivation),
+    median_deprivaton=median(deprivation),
+    sd = sd(deprivation),
+    min = min(deprivation),
+    max = max(deprivation)
+  )
+```
+
+Similar to threat, since deprivation is heavily right skewed the median is a more approriate center for the data. Thus the median deprivation is 15. Furthermore, the variability in deprivation is scores is high - but not as high as deprivation. 
+
+Before we move onto the unadjusted analysis, ill briefly summarize what we found in previous analysis. When moving forward with analysis it should be important to note the only variable that had a normal distribution was composite cognition scores, the distributions for the rest of the variables are not normal. This is important as we move forward with running statistical tests(parametric vs non-parametric). Furthermore the variability in cognition scores and childhood trauma scores are significantly high. When I eventually get to regression model building,it will be important to note this. 
+
+
+
+## Unadjusted Analysis
+
+Now that we have looked at both cognition and childhood trauma individually as variables, lets explore the relationship between these two variables. 
+
+```{r}
+ggplot(midus, aes(x=threat,y=composite_cognition)) + 
+  geom_point(aes(color=sex)) 
+
+fit1 <- lm(composite_cognition ~ threat, data=midus)
+
+summary(fit1)
+```
+
+
+From the graph above, we do not see a discernible linear relationship between composite cognition and threat. We further explored the relationship between the two variables by fitting a linear model. From the linear model, we see that threat is in fact not a significant predictor of composition cognition score. Furthermore the R^2 is extremely low indicating that a linear model is not appropriate - expected.
+
+```{r}
+ggplot(midus, aes(x=deprivation,y=composite_cognition)) + 
+  geom_point() +
+  geom_smooth()
+
+fit2 <- lm(composite_cognition ~ deprivation, data=midus)
+
+summary(fit2)
+```
+
+From looking at the scatter plot, there does not seem to be a significant linear correlation or discernible relationship. We further evaluated the relationship by fitting a linear model. From the linear model fit, deprivation was a significant predictor of composite cognition at alph-level = 0.05. This we interpret the slope as for every one unit increase of threat score, composite cognition deacreases by 0.13. Furthermore, the overall linear model is significant(F-statistics 8.775, p-value=0.003). Thus we conclude there is a significant relationship between deprivation and composite cognition score.  However, despite the model and singular predictor being significant, the adjusted r-squared is equal to 0.007 which is quite low. Thus though we conclude there is relationship between deprivation and composite cognition, the model does not account for the variability of cognition score. 
+
+Lets evaluate Episodic Memory
+
+```{r}
+ggplot(midus, aes(x=threat,y=episodic_memory)) + 
+  geom_point()
+
+fit3 <- lm(episodic_memory ~ threat, data=midus)
+
+summary(fit3)
+```
+
+
+From looking at the scatter plot of threat vs episodic memory, we do not see a signficant linear relationship between the two variables. The linear model fitted to the two variables further confirms this. The overall model is not significant, moreover the predictor - threat - is not significant either. 
+
+```{r}
+ggplot(midus, aes(x=deprivation,y=episodic_memory)) + 
+  geom_point()
+
+fit4 <- lm(episodic_memory ~ threat, data=midus)
+
+summary(fit4)
+```
+
+
+```{r}
+ggplot(midus, aes(x=threat,y=executive_func)) + 
+  geom_point()
+
+fit5 <- lm(executive_func ~ threat, data=midus)
+
+summary(fit5)
+```
+
+
+```{r}
+ggplot(midus, aes(x=deprivation,y=executive_func)) + 
+  geom_point()
+
+fit6 <- lm(executive_func ~ deprivation, data=midus)
+
+summary(fit6)
+```
+
+## Self Administered Substance Abuse
+
+```{r}
+midus %>%
+  group_by(tranquilizer) %>% 
+  summarize(n_obs=n())
+
+midus %>%
+  group_by(stimulants) %>% 
+  summarize(n_obs=n())
+
+midus %>%
+  group_by(inhallants) %>% 
+  summarize(n_obs=n())
+
+midus %>%
+  group_by(depressants) %>% 
+  summarize(n_obs=n())
+
+midus %>%
+  group_by(marijuana) %>% 
+  summarize(n_obs=n())
+
+midus %>%
+  group_by(cocaine) %>% 
+  summarize(n_obs=n())
+
+midus %>%
+  group_by(hallucinogens) %>% 
+  summarize(n_obs=n())
+
+midus %>%
+  group_by(heroin) %>% 
+  summarize(n_obs=n())
+
+
+```
+
+
+
+
+

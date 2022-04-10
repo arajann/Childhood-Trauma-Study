@@ -75,10 +75,26 @@ midus_df %>%
     executive_func = B3TEFZ3,
     ses_index = B1PTSEI
   ) %>% 
-  select(M2ID,age,sex,race,education,tranquilizer,stimulants,painkillers,depressants,inhallants,marijuana,cocaine,hallucinogens,heroin,composite_cognition,episodic_memory,executive_func,ses_index)
+  filter(
+    race %in% (1:6)
+  ) %>% 
+  mutate(
+    race = as.factor(race),
+    sex = as.factor(sex),
+    education = as.factor(education),
+    tranquilizer = as.factor(tranquilizer),
+    stimulants = as.factor(stimulants),
+    painkillers = as.factor(painkillers),
+    depressants = as.factor(depressants),
+    inhallants = as.factor(inhallants),
+    marijuana = as.factor(marijuana),
+    cocaine = as.factor(hallucinogens),
+    hallucinogens = as.factor(hallucinogens),
+    heroin = as.factor(heroin)
+  ) %>% 
+  select(M2ID,age,sex,race,education,tranquilizer,stimulants,painkillers,depressants,inhallants,marijuana,cocaine,hallucinogens,heroin,composite_cognition,episodic_memory,executive_func) %>% 
+  na.omit()
 
-
-str(midus$tranquilizer)
 ```
 
 
