@@ -32,11 +32,18 @@ summary(full_model_lme)
 ```
 
 ```{r}
-null_model <- lm(composite_cognition ~ threat+ deprivation, data=midus)
+null_model_composite <- lm(composite_cognition ~ threat+ deprivation, data=midus)
+null_model_episodic <- lm(episodic_memory ~ threat+ deprivation, data=midus)
+null_model_executive <- lm(executive_func ~ threat+ deprivation, data=midus)
+
+
+
 null_model_lme <- lmer(composite_cognition ~ threat+ deprivation + (1|family_id), data=midus)
 
 
 summary(null_model)
+summary(null_model_episodic)
+summary(null_model_executive)
 summary(null_model_lme)
 ```
 

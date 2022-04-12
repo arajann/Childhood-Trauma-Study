@@ -562,7 +562,11 @@ boxplot(threat ~ education, data=midus)
 boxplot(deprivation ~ education, data=midus)
 
 threat_education_lm <- lm(threat ~ education, data=midus)
-deprivation_education_lm <- lm()
+deprivation_education_lm <- lm(deprivation ~ education, data=midus)
+
+
+summary(threat_education_lm)
+summary(deprivation_education_lm)
 
 ```
 
