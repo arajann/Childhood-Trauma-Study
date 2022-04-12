@@ -14,6 +14,7 @@ library(tidyverse)
 library(haven)
 library(readr)
 library(stringr)
+library(MASS)
 ```
 
 
@@ -73,7 +74,8 @@ midus_df %>%
     composite_cognition = B3TCOMPZ3,
     episodic_memory = B3TEMZ3,
     executive_func = B3TEFZ3,
-    ses_index = B1PTSEI
+    ses_index = B1PTSEI,
+    family_id = M2FAMNUM
   ) %>% 
   filter(
     race %in% (1:6)
@@ -92,7 +94,7 @@ midus_df %>%
     hallucinogens = as.factor(hallucinogens),
     heroin = as.factor(heroin)
   ) %>% 
-  select(M2ID,age,sex,race,education,tranquilizer,stimulants,painkillers,depressants,inhallants,marijuana,cocaine,hallucinogens,heroin,composite_cognition,episodic_memory,executive_func) %>% 
+  select(M2ID,age,sex,race,education,tranquilizer,stimulants,painkillers,depressants,inhallants,marijuana,cocaine,hallucinogens,heroin,composite_cognition,episodic_memory,executive_func,family_id) %>% 
   na.omit()
 
 ```

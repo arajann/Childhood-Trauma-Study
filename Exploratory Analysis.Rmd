@@ -11,6 +11,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(tidyverse)
+library(nlme)
+library(lme4)
+library(haven)
+library(readr)
+library(stringr)
+library(geepack)
+
 ```
 
 
@@ -18,7 +25,7 @@ library(tidyverse)
 
 ```{r warning=FALSE, echo=FALSE}
 midus_1 <- read_sav("./data/M2_P1_SURVEY_N4963_20200720.sav") %>% 
-  select(M2ID,B1PAGE_M2,B1PRSEX,B1PF7A,B1SA62A,B1SA62B,B1SA62C,B1SA62D,B1SA62E,B1SA62F,B1SA62G,B1SA62H,B1SA62I,B1SA62J,B1PTSEI,B1PB1)
+  select(M2ID,M2FAMNUM,B1PAGE_M2,B1PRSEX,B1PF7A,B1SA62A,B1SA62B,B1SA62C,B1SA62D,B1SA62E,B1SA62F,B1SA62G,B1SA62H,B1SA62I,B1SA62J,B1PTSEI,B1PB1)
 
 midus_3 <- read_sav("./data/M2_P3_BTACT_N4512_20211123.sav") %>% 
          select(M2ID,B3TCOMPZ3,B3TEMZ3,B3TEFZ3) %>% 
@@ -63,7 +70,8 @@ midus_df %>%
     composite_cognition = B3TCOMPZ3,
     episodic_memory = B3TEMZ3,
     executive_func = B3TEFZ3,
-    ses_index = B1PTSEI
+    ses_index = B1PTSEI,
+    family_id = M2FAMNUM
   ) %>% 
   filter(
     race %in% (1:6)
@@ -109,11 +117,38 @@ midus_df %>%
                            '2' = "No"),
     heroin = recode(heroin,
                            '1' = "Yes",
-                           '2' = "No")
+                           '2' = "No"),
+    race = recode(race,
+                            '1' = "White",
+                            '2' = "Black",
+                            '3' = "Native American",
+                            '4' = "Asian",
+                            '5' = "Native Hawaiian or Pacific Islander",
+                            '6'= "Other"
+                  ),
+    sex= recode(sex,
+                '1'="Male",
+                '2'="Female")
   ) %>% 
-  select(age,sex,race,education,tranquilizer,stimulants,painkillers,depressants,inhallants,marijuana,cocaine,hallucinogens,heroin,composite_cognition,episodic_memory,executive_func,threat,deprivation) %>% 
-  na.omit() %>% 
+  select(family_id,age,sex,race,education,tranquilizer,stimulants,painkillers,depressants,inhallants,marijuana,cocaine,hallucinogens,heroin,composite_cognition,episodic_memory,executive_func,threat,deprivation) %>% 
   janitor::clean_names()
+```
+
+```{r}
+midus <- within(midus,tranquilizer <- relevel(tranquilizer,ref="No"))
+midus <- within(midus,stimulants <- relevel(stimulants,ref="No"))
+midus <- within(midus,painkillers <- relevel(painkillers,ref="No"))
+midus <- within(midus,inhallants <- relevel(inhallants,ref="No"))
+midus <- within(midus,marijuana <- relevel(marijuana,ref="No"))
+midus <- within(midus,cocaine <- relevel(cocaine,ref="No"))
+midus <- within(midus,hallucinogens <- relevel(hallucinogens,ref="No"))
+
+```
+
+
+
+```{r}
+
 ```
 
 
@@ -325,36 +360,213 @@ midus %>%
   group_by(tranquilizer) %>% 
   summarize(n_obs=n())
 
+boxplot(composite_cognition ~ tranquilizer, data= midus)
+
+# n=34 for yes
+
+
 midus %>%
   group_by(stimulants) %>% 
   summarize(n_obs=n())
+
+
+
+
+#n = 25
 
 midus %>%
   group_by(inhallants) %>% 
   summarize(n_obs=n())
 
+# n = 14
+
 midus %>%
   group_by(depressants) %>% 
   summarize(n_obs=n())
+
+#n=49
 
 midus %>%
   group_by(marijuana) %>% 
   summarize(n_obs=n())
 
+# n = 1
+
 midus %>%
   group_by(cocaine) %>% 
   summarize(n_obs=n())
+
+
+# n = 13
 
 midus %>%
   group_by(hallucinogens) %>% 
   summarize(n_obs=n())
 
+# n = 13
+
 midus %>%
   group_by(heroin) %>% 
   summarize(n_obs=n())
 
+# n = 1 
+
 
 ```
+
+
+From looking at the tables we see in general that substance use is fairly low across the sample. The substances most frequently used are depressants, tranquilizers, and stimulants. While the substances least frequently used are heroin and marijuana(suprising!) with n=1. When creating our interaction models, and conducting moderation analysis, these low number of observations should be noted. I for see issues with model building using the interaction terms with such low n.
+
+
+
+```{r}
+x <-model.matrix(composite_cognition ~ .,data=midus)
+```
+
+
+```{r}
+bartlett.test(composite_cognition ~ tranquilizer, data = midus)
+tranq_anova <-aov(composite_cognition ~ tranquilizer, data=midus)
+summary(tranq_anova)
+
+# Not Significant
+
+bartlett.test(composite_cognition ~ stimulants, data=midus)
+stimulant_anova <- aov(composite_cognition ~ stimulants, data=midus)
+summary(stimulant_anova)
+
+#Not Significant
+
+bartlett.test(composite_cognition ~ inhallants, data=midus)
+inhallant_anova <- aov(composite_cognition ~ inhallants, data=midus)
+summary(inhallant_anova)
+
+# Not Significant
+
+bartlett.test(composite_cognition ~ depressants, data=midus)
+depressant_anova <- aov(composite_cognition ~ depressants, data=midus)
+summary(depressant_anova)
+
+
+
+wilcox.test(composite_cognition ~ marijuana, data=midus)
+wilcox.test(composite_cognition ~ heroin, data=midus)
+wilcox.test(composite_cognition ~ cocaine, data=midus)
+
+
+bartlett.test(composite_cognition ~ tranquilizer, data = midus)
+```
+
+
+
+Before we begin our moderation Analysis, we need to conduct an analysis evaluating confounding. 
+
+
+## Evaluating Confounding
+
+Now we will be getting into the meat of our analysis. First it should noted that the observations are in fact non-independent. Why is this the case? Well observations were not randomly sampled. We see sampling of participants from the same family, hence the inclusion of family ID in our data set. Cluster sampling was utilized. Therefore participants from the same family likely have similar levels of childhood trauma experience and similar cognition. Now given this, much of the analysis we could question the validity of the analysis run prior, but the purpose of the analysis before is to get an initial look at the data we are working with. the linear models fitted were merely to detect if there is any un-adjusted association.
+
+
+Now we will delve into the real analysis. First lets start by looking at confounding. The variables we will be looking at is race, education, age, and sex. To evaluate confounding we will build linear mixed models evaluating the covariates association to both the outcome(composite_cognition,episodic_memory,executive_func)  
+
+### Race 
+```{r}
+
+boxplot(composite_cognition ~ race, data=midus)
+
+
+race_lm <- lm(composite_cognition ~ race, data=midus)
+race_lme <- lmer(composite_cognition~ race + (1|family_id), data=midus)
+
+
+
+
+summary(race_lm)
+print(summary(race_fit))
+
+my_stat = 2*(logLik(race_lme) - logLik(race_lm,REML = TRUE))
+my_stat
+```
+
+To evaluate confounding we first fit a boxplot. From the box plot we see median composite cognition score is different across races. We see that the highest composite cognition score is among those who identified as native american, the lowest median composite cognition score is among those who identified as black. To further to see if there is an association between race and composite cognition, we it a linear model. To note, the observations are not considered independent, but I just want to see if there is an association while disregarding grouping. From running the linear fit, we see there is an association between race and composite cognition scores as the model is significant(p-value = 0.000617). To evaluate the specific parameters, lets introduce a mixed effects model to have greater interpretability. To begin, the mixed effect model tells us that 54.35% of the variance is not explained by the fixed effects. This indicates the importance of including grouping by family as an effect. From the model we see that on average, composite cognition scores tend to be lower compared to those who identify as white with the exception of native americans. So we we conclude race is infact associated with composite cognition. Lets look at race vs our exposure(threat and deprivation).
+
+```{r}
+boxplot(threat ~ race, data=midus)
+boxplot(deprivation ~ race, data=midus)
+
+race_threat_lm <- lm(threat~ race, data=midus)
+race_threat_lme <- lmer(threat~ race + (1|family_id), data=midus)
+
+race_deprivation_lm <- lm(deprivation~ race, data=midus)
+race_deprivation_lme <- lmer(deprivation~ race + (1|family_id), data=midus)
+
+
+summary(race_threat_lm)
+summary(race_deprivation_lm)
+
+
+
+print(summary(race_threat_lme))
+print(summary(race_deprivation_lme))
+
+```
+
+
+
+From constructing the boxplots we see that median threat score is similar across racial categories with the exception native americans who had a much higher mean threat score. But, when we evaluate median deprivation score, we see the scores are significantly difference - native Americans and Asians had much higher deprivation scores. From running the linear models, we see there is association between race and deprivation and race and threat. The linear mixed effect model confirms this. Thus race is considered a confounder
+
+
+### Age 
+
+```{r}
+ggplot(midus,aes(x=age,y=composite_cognition)) + geom_point() + geom_smooth(method=lm)
+
+age_lm <- lm(composite_cognition ~ age, data=midus)
+age_lme <- lmer(composite_cognition ~ age + (1|family_id), data=midus)
+
+summary(age_lm)
+summary(age_lme)
+
+```
+
+
+
+From ditting the scatter plot, there seems to be a fairly significant negative linear correlation between age and composite cognition. From fitting the linear model, we further confirm there is an association between age and composite cognition. 
+
+
+```{r}
+ggplot(midus,aes(x=age,y=threat)) + geom_point() + geom_smooth(method=lm)
+ggplot(midus,aes(x=age,y=deprivation)) + geom_point() + geom_smooth(method=lm)
+
+age_threat_lm <- lm(threat ~ age, data=midus)
+
+
+summary(age_threat_lm)
+summary(lmer(threat ~ age + (1|family_id), data=midus))
+
+
+```
+
+## Education
+
+```{r}
+boxplot(composite_cognition ~ education, data=midus)
+
+education_lm <- lm(composite_cognition ~ education, data=midus)
+
+summary(education_lm)
+```
+
+```{r}
+boxplot(threat ~ education, data=midus)
+boxplot(deprivation ~ education, data=midus)
+
+threat_education_lm <- lm(threat ~ education, data=midus)
+deprivation_education_lm <- lm()
+
+```
+
+
 
 
 

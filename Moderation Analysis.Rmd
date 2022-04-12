@@ -1,0 +1,50 @@
+---
+title: "Moderation Analysis"
+author: "Anand Rajan"
+date: "4/11/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+library(tidyverse)
+library(nlme)
+library(lme4)
+library(haven)
+library(readr)
+library(stringr)
+library(geepack)
+```
+
+```{r}
+full_model <- lm(composite_cognition ~ age+ sex + education + race +tranquilizer + stimulants + painkillers + depressants + inhallants + marijuana + cocaine + hallucinogens + threat+ deprivation, data=midus)
+
+full_model_lme <- lmer(composite_cognition ~ age + sex + education + race +tranquilizer + stimulants + painkillers + depressants + inhallants + marijuana + cocaine + hallucinogens + threat+ deprivation + (1|family_id), data=midus)
+
+summary(full_model)
+summary(full_model_lme)
+
+```
+
+```{r}
+null_model <- lm(composite_cognition ~ threat+ deprivation, data=midus)
+null_model_lme <- lmer(composite_cognition ~ threat+ deprivation + (1|family_id), data=midus)
+
+
+summary(null_model)
+summary(null_model_lme)
+```
+
+
+```{r}
+model_covariates <- lm(composite_cognition ~ age+ sex + education + race + threat + deprivation, data=midus)
+
+
+summary(model_covariates)
+```
+
