@@ -142,12 +142,7 @@ midus <- within(midus,inhallants <- relevel(inhallants,ref="No"))
 midus <- within(midus,marijuana <- relevel(marijuana,ref="No"))
 midus <- within(midus,cocaine <- relevel(cocaine,ref="No"))
 midus <- within(midus,hallucinogens <- relevel(hallucinogens,ref="No"))
-
-```
-
-
-
-```{r}
+midus <- within(midus,depressants <- relevel(depressants,ref="No"))
 
 ```
 
@@ -156,11 +151,6 @@ After importing and cleaning data, we have 1097 observations with full data. Now
 
 
 # Exploratory Analysis
-
-```{r}
-midus %>% 
-  knitr::kable()
-```
 
 
 ## Cognition
@@ -316,7 +306,7 @@ Lets evaluate Episodic Memory
 ggplot(midus, aes(x=threat,y=episodic_memory)) + 
   geom_point()
 
-fit3 <- lm(episodic_memory ~ threat, data=midus)
+fit3 <- lmer(episodic_memory ~ threat + (1|family_id), data=midus)
 
 summary(fit3)
 ```
@@ -328,7 +318,7 @@ From looking at the scatter plot of threat vs episodic memory, we do not see a s
 ggplot(midus, aes(x=deprivation,y=episodic_memory)) + 
   geom_point()
 
-fit4 <- lm(episodic_memory ~ threat, data=midus)
+fit4 <- lmer(episodic_memory ~ deprivation + (1|family_id), data=midus)
 
 summary(fit4)
 ```
@@ -338,17 +328,15 @@ summary(fit4)
 ggplot(midus, aes(x=threat,y=executive_func)) + 
   geom_point()
 
-fit5 <- lm(executive_func ~ threat, data=midus)
+fit5 <- lmer(executive_func ~ threat + (1|family_id), data=midus)
 
 summary(fit5)
 ```
 
 
-```{r}
-ggplot(midus, aes(x=deprivation,y=executive_func)) + 
-  geom_point()
 
-fit6 <- lm(executive_func ~ deprivation, data=midus)
+```{r}
+fit6 <- lmer(executive_func ~ threat + deprivation + (1|family_id), data=midus)
 
 summary(fit6)
 ```
@@ -552,17 +540,22 @@ summary(lmer(threat ~ age + (1|family_id), data=midus))
 ```{r}
 boxplot(composite_cognition ~ education, data=midus)
 
-education_lm <- lm(composite_cognition ~ education, data=midus)
+education_lm <- lmer(composite_cognition ~ education + (1|family_id), data=midus)
 
 summary(education_lm)
+
+
+midus %>% 
+  group_by(education) %>% 
+  summarize(n_obs=n())
 ```
 
 ```{r}
 boxplot(threat ~ education, data=midus)
 boxplot(deprivation ~ education, data=midus)
 
-threat_education_lm <- lm(threat ~ education, data=midus)
-deprivation_education_lm <- lm(deprivation ~ education, data=midus)
+threat_education_lm <- lmer(threat ~ education + (1|family_id), data=midus)
+deprivation_education_lm <- lmer(deprivation ~ education + (1|family_id), data=midus)
 
 
 summary(threat_education_lm)
