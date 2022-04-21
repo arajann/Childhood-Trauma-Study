@@ -9,27 +9,52 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Moderation Analysis 
+# Moderation Analysis 
 
 To summarize the exploratory analyses, we found that race and sex were confounding factors to the association between childhood trauma and cognition. Now that we have created multiple visualizations and evaluated confounding, we will move into the crux of our analysis - moderation analysis. We will be specifically focusing on how substance abuse moderates the association between trauma and cognition. To outline our analysis, it will be broken down into three sections: Composite cognition, Episodic Memory, Executive Functioning. To evaluate moderation, we will both look at aggregated substance abuse and break down by each substance.  We will construct linear mixed models to evaluate the significance of interaction terms and then compare the interaction models to the null model without substance abuse and model without interaction effect. Linear mixed models were utilized since the data set is not independent. Participants would sampled through cluster sampling, thus we see participants from the same family. This violates the assumption of independence as there is likely relationships between different observations. 
 
-```{r echo=FALSE}
+```{r echo=FALSE, warning=FALSE}
 library(tidyverse)
 library(nlme)
 library(lme4)
 library(haven)
-library(readr)
-library(stringr)
-library(geepack)
 library(lmerTest)
 library(merTools)
 library(emmeans)
-library(stargazer)
-library(sjPlot)
-library(report)
+library(MuMIn)
 ```
 
-```{r}
+```{r, echo=FALSE, warning=FALSE}
+midus_1 <- read_sav("./data/M2_P1_SURVEY_N4963_20200720.sav") %>% 
+  dplyr::select(M2ID,M2FAMNUM,B1PAGE_M2,B1PRSEX,B1PF7A,B1SA62A,B1SA62B,B1SA62C,B1SA62D,B1SA62E,B1SA62F,B1SA62G,B1SA62H,B1SA62I,B1SA62J,B1PTSEI,B1PB1)
+
+midus_3 <- read_sav("./data/M2_P3_BTACT_N4512_20211123.sav") %>% 
+         dplyr::select(M2ID,B3TCOMPZ3,B3TEMZ3,B3TEFZ3) %>% 
+         na.omit()
+
+project4 <- load(file='./data/project4.rda')
+
+midus_4 <-
+  da29282.0001 %>% 
+  dplyr::select(M2ID,B4QCT_EA,B4QCT_EN,B4QCT_MD,B4QCT_PA,B4QCT_SA,B4QCT_PN) %>% 
+  mutate(
+    threat = B4QCT_EA + B4QCT_PA + B4QCT_SA,
+    deprivation = B4QCT_EN + B4QCT_MD + B4QCT_PN
+  ) %>% 
+  dplyr::select(M2ID, threat,deprivation)
+
+milwaukee <- read_tsv("./data/MKE Data.tsv") %>% 
+  dplyr::select(M2ID,BACRAGE,BACRSEX,BACB1,BACF7A,BACAS62A,BACAS62B,BACAS62C,BACAS62D,BACAS62E,BACAS62F,BACAS62G,BACAS62H,BACAS62I,BACAS62J)
+
+midus_df1 <- dplyr::inner_join(midus_4,midus_3)
+midus_df2 <-dplyr::left_join(midus_df1,midus_1)
+midus_df <- dplyr::left_join(midus_df2,milwaukee)
+```
+
+
+```{r,echo=FALSE,warning=FALSE}
+
+
 midus <-
 midus_df %>% 
   mutate(
@@ -117,8 +142,20 @@ midus_df %>%
     drug_use = case_when(tranquilizer == 'Yes'| stimulants == 'Yes'| painkillers == 'Yes'| depressants == 'Yes' | inhallants == 'Yes' | marijuana == 'Yes' | cocaine == 'Yes' | heroin == 'Yes'  ~ 'Yes',
                          TRUE ~ 'No')
   ) %>% 
-  select(family_id,age,sex,race,education,tranquilizer,stimulants,painkillers,depressants,inhallants,marijuana,cocaine,hallucinogens,heroin,composite_cognition,episodic_memory,executive_func,threat,deprivation, drug_use) %>% 
+  dplyr::select(family_id,age,sex,race,education,tranquilizer,stimulants,painkillers,depressants,inhallants,marijuana,cocaine,hallucinogens,heroin,composite_cognition,episodic_memory,executive_func,threat,deprivation, drug_use) %>% 
   janitor::clean_names()
+```
+
+
+```{r echo=FALSE, warning=FALSE}
+midus <- within(midus,tranquilizer <- relevel(tranquilizer,ref="No"))
+midus <- within(midus,stimulants <- relevel(stimulants,ref="No"))
+midus <- within(midus,painkillers <- relevel(painkillers,ref="No"))
+midus <- within(midus,inhallants <- relevel(inhallants,ref="No"))
+midus <- within(midus,marijuana <- relevel(marijuana,ref="No"))
+midus <- within(midus,cocaine <- relevel(cocaine,ref="No"))
+midus <- within(midus,hallucinogens <- relevel(hallucinogens,ref="No"))
+midus <- within(midus,depressants <- relevel(depressants,ref="No"))
 ```
 
 ## Drug Use
@@ -133,13 +170,70 @@ midus %>%
 
 From this table we see the proportion of those who used ANY substance is low ~ 9.6%(n=106). This low proportion should be noted as we interpret our models and the moderation effect of substance abuse.  
 
-```{r}
+```{r echo=FALSE}
+midus %>%
+  group_by(tranquilizer) %>% 
+  summarize(n_obs=n()) %>% 
+  knitr::kable()
 
+
+# n=34 for yes
+
+midus %>%
+  group_by(stimulants) %>% 
+  summarize(n_obs=n()) %>% 
+  knitr::kable()
+
+#n = 25
+
+midus %>%
+  group_by(inhallants) %>% 
+  summarize(n_obs=n()) %>% 
+  knitr::kable()
+
+# n = 14
+
+midus %>%
+  group_by(depressants) %>% 
+  summarize(n_obs=n()) %>% 
+  knitr::kable()
+
+#n=49
+
+midus %>%
+  group_by(marijuana) %>% 
+  summarize(n_obs=n()) %>% 
+  knitr::kable()
+
+# n = 1
+
+midus %>%
+  group_by(cocaine) %>% 
+  summarize(n_obs=n()) %>% 
+  knitr::kable()
+
+
+# n = 13
+
+midus %>%
+  group_by(hallucinogens) %>% 
+  summarize(n_obs=n()) %>% 
+  knitr::kable()
+
+# n = 13
+
+midus %>%
+  group_by(heroin) %>% 
+  summarize(n_obs=n()) %>% 
+  knitr::kable()
+
+# n = 1 
 ```
 
+From the tables above we can see the number of those who indicated use of any of the substances over the past 12 months. Of the substances, we see the number of those who indicated use of marijuana or heroin is equal to 2. This value is quite low, and thus would be too sparse to be meaningfully included in our model. Though the other substances do not have a significantly high number of observations that answered yes, the n is still above 10 so they will be included during regression analysis. 
 
 
-```{r}
+```{r, echo=FALSE, warning=FALSE}
 midus$composite_cognition <- scale(midus$composite_cognition , center = TRUE, scale = TRUE)
 ```
 
@@ -152,24 +246,39 @@ null_model_composite <-lmer(composite_cognition ~ threat + deprivation + (1|fami
 
 summary(null_model_composite)
 confint(null_model_composite, level = 0.95, method = "Wald")
+```
+```{r}
 plotREsim(REsim(null_model_composite))
 ```
-From fixed effects of this null model, we conclude that threat and deprivation are not significant predictors at the significance level of 0.05. Moreover if we look at the confidence interval for each of the parameters they include 0.  However, it should be noted that the association between threat and deprivation is confounded by a multitude of factors as stated in our exploratory analysis. These factors are sex and race. Moreover since age and education are significantly associated with composite cognition, we will include them in our full model with covariates. One final point of the model the differences between families explains 53.8% of variance  after the variance explained by our fixed effects.  
+
+From the fixed effects of this null model, we conclude that threat and deprivation are not significant predictors at the significance level of 0.05. Moreover if we look at the confidence interval for each of the parameters they include 0.  However, it should be noted that the association between threat and deprivation is confounded by a multitude of factors as stated in our exploratory analysis. These factors are sex and race. Moreover since age and education are significantly associated with composite cognition, we will include them in our full model with covariates. One final point on the model is that the differences between families explains 53.8% of variance not explained by our fixed effects. Thus including family as a random effect is essential. 
+
+
+```{r}
+summary(lmer(composite_cognition ~ threat + deprivation + drug_use + (1|family_id), data=midus))
+```
+I additionally wanted to run a model that just included childhood trauma and aggregated substance abuse, but the predictors remain insignficant in the model at significance level 0.05. I should be noted that though that parameter estimates for drug use and deprivation are high. 
 
 
 ```{r}
 model_covariates <- lmer(composite_cognition ~ threat + deprivation + age + sex + race + education + drug_use + (1|family_id), data=midus)
 
 summary(model_covariates)
+r.squaredGLMM(model_covariates)
 
 ```
-We see from the model above that despite adding the covariates, deprivation and threat are still not considered significant predictors in composite cognition at the significance level of 0.05. However from the model we glean that sex, age, and higher level education are significant predictors in composite cognition score.It is important to note that substance abuse is also not significant in this model.  Confidence intervals of the parameters confirm this. Lets now look at the effects plot. 
+We see from the model above that despite adding the covariates, deprivation and threat are still not considered significant predictors in composite cognition at the significance level of 0.05. However from the model we glean that sex, age, and higher level education are significant predictors in composite cognition score.Moreover, the random effects for family are still significant. It is important to note that substance abuse is also not significant in this model.
+
+
+To evaluate model fit, there is no perfect measure. But if we look at the marginal R^2 we get a value equal to 0.3066, and conditional R^2 is 0.5845. This is OK, and does not indicate a great model fit. 
+
+Lets now look at the residuals plot. 
 
 ```{r}
 confint(model_covariates, level = 0.95, method = "Wald")
-plotREsim(REsim(model_covariates))
+plot(model_covariates)
 ```
-
+From looking at the residuals plot, we do not see any deviations from the linear form as there is relatively constant variance across the fitted range. Thus assumptions are met for this model. Good!
 
 Model with Interactions
 
@@ -177,11 +286,25 @@ Model with Interactions
 model_covariates_interactions <- lmer(composite_cognition ~ threat + deprivation + age + sex + race + education + drug_use + threat*drug_use + deprivation*drug_use + (1|family_id), data=midus)
 
 summary(model_covariates_interactions)
+r.squaredGLMM(model_covariates_interactions)
 ```
 
+The model summary above shows that the interaction effects between aggregated drug use and childhood trauma are not significant at the significance level of 0.05. Random effects from family still remain significant for this model. When evaluating model fit, we get similar marginal R^2 and conditional R^2 values to the previous model without interactions. Thus we do not see much greater model fit. Lets look at the residual plot for this model.
 
-From the model, we see that the interaction between threat and overall substance abuse is not significant and the interaction between deprivation and drug_use is not significant either. We will now visualize the differential effects.
 
+```{r}
+plot(model_covariates_interactions)
+```
+Residual plots indicate fairly constant variance across fitted values, thus model assumption is met! Now lets evaluate if there are any difference between the models.
+
+```{r}
+anova(model_covariates,model_covariates_interactions)
+```
+
+From the output we see that AIC does not decrease, BIC decreases and a p-value >0.05. These three values indicate that interaction aeffects are not significant in the model. Thus we would opt for the model without interaction effects as the better model. 
+
+
+Though from our regression analysis we would conclude interaction effects are not significant, let's conduct some additional analysis to further confirm these results. 
 
 ```{r}
 ggplot(aes(threat,composite_cognition), data = midus) + 
@@ -191,17 +314,20 @@ ggplot(aes(threat,composite_cognition), data = midus) +
 ```
 
 
+The graph above plots threat trauma scores vs composition cognition z-scores by Drug use.
+
 ```{r}
 ggplot(aes(deprivation,composite_cognition), data = midus) + 
   geom_point() + 
   facet_wrap(~ drug_use) + 
   theme_classic()
 ```
+The plot above shows deprivation vs composite cognition by drug use. 
 
 
-The two plots confirm this result as well. 
+From looking at the two plots, we do not see significant difference in correlations between traum and composite cognition z score when separated by drug use.
 
-
+We will now evaluate estimated means. 
 
 ```{r}
 
@@ -218,6 +344,8 @@ simpleSlope <- emtrends(model_covariates_interactions, pairwise ~ drug_use, var 
 summary(simpleSlope)
 
 ```
+The purpose of this estimated marginal means analysis is to test if there is a significant difference in mean composite cognition scores at different levels of threat scores for those who did or did not use substances. From this analysis, we confirm there are not significant differences. 
+
 
 ```{r}
 m_deprivation<- mean(midus$deprivation, na.rm = TRUE)
@@ -234,73 +362,107 @@ summary(emtrends(model_covariates_interactions, pairwise ~ drug_use, var = "depr
 
 ```
 
-There is a lot of information here. We will first break it down by threat and deprivation. From looking at estimated means for threat, we do not see significant idfference. 
+The purpose of this estimated marginal means analysis is to test if there is a significant difference in mean composite cognition scores at different levels of deprivation scores for those who did or did not use substances. From this analysis, we confirm there are not significant differences. 
 
-
-```{r}
-anova(model_covariates,model_covariates_interactions,test="chi")
-```
-
-The two models are significantly different.
-
+Now that we have looked at aggregated substance use, lets break down by substances.
 
 ```{r}
 
 model_substances <- lmer(composite_cognition ~ age + sex + education + race +tranquilizer + stimulants + painkillers + depressants + inhallants + cocaine + hallucinogens + threat+ deprivation + (1|family_id), data=midus)
 
 summary(model_substances)
+r.squaredGLMM(model_substances)
 ```
+
+From this model we see that the predictors for the specific substances are not significant at the significance level of 0.05. However though the p-value indicates non-significance, I will look at each individual substance parameter. The slope parameters for painkillers, depressants, inhallants and cocaine mean that those individuals who indicated use of these substances over the past 12 months had on average a lower composite cognition score compared to those who indicated no use. Moreover, the random effects of grouping by family is significant. 
+
+To evaluate model fit, we looked at R^2 values. The marginal r^2 is 0.3057 and the conditional r^2 is 0.5811. These values indicate OK model fit, but not great. 
+
+
+```{r}
+plot(model_substances)
+```
+
+Residual plots indicate fairly constant variance across fitted values, thus model assumption is met!
+
 
 ```{r}
 model_substances_interactions <- lmer(composite_cognition ~ age + sex + education + race +tranquilizer + stimulants + painkillers + depressants + inhallants + cocaine + hallucinogens + threat+ deprivation + stimulants*threat + stimulants*deprivation + painkillers*threat + painkillers*deprivation + inhallants*threat + inhallants*deprivation + cocaine*threat + cocaine*deprivation + hallucinogens*threat + hallucinogens*deprivation + tranquilizer*threat + tranquilizer*deprivation +(1|family_id), data=midus)
 
 summary(model_substances_interactions)
+r.squaredGLMM(model_substances_interactions)
 ```
+
+With this model, we are looking to see if any of the interaction effects are significant. From reviewing the model summary we see that non of the interaction terms are significant at the 0.05 significance level. This indicates that interaction effects between childhood trauma(deprivation and threat) and substances are not significant. Lets compare the the two models/
+
+
 
 ```{r}
 anova(model_substances,model_substances_interactions,test="Chi")
 ```
 
-No Significant Difference
+From the test, we see that AIC does not decrease, BIC increases and the p-value is well above 0.05.  This indicates that the model with interactions is not significantly better, thus we would choose the model without interactions. 
 
 
-Conclusions:
+### Conclusions:
 
+First, from regression analysis and calculated estimated marginal means, we conclude the interaction effects between drug use and childhood trauma(deprivation and threat) are not significant. To test for the significance of the interaction effects, we constructed a model that had interaction terms between drug use and deprivation and drug use and threat. Neither of these terms were significant at the 0.05 level. Furthermore, we we went on to compare the model with the interactions to the model with all the covariates and no interactions and found no sigifnicant difference. Thus we chose the model without interaction terms as the better model. Then we constructed models that broke substance abuse down into specific substances. When evaluating the slope parameters for the specific substances in the model, we did not find any of the slope parameters to be significant. It should be noted despite non-significance, some of the parameter values were significantly high. For example, those who indicated as having used inhallants or cocaine, had a significantly lower composite cognition z score as opposed to those who did not. So despite insigificant p values, the parameters are interpretable. Now we tested interaction effects. The interaction model yielded no significant parameters regards to interaction terms between childhood depprivation and threat and specific substance use. Furthermore when comparing the two models, we found no signficant difference; therefore we would choose the model without interaction terms as the better model. 
+Thus to contextualize our results within the framework of the study, we conclude that substance abuse is NOT a moderator in the association between childhood trauma and cognition. 
 
 
 
 ## Episodic Memory
+
+Now lets conduct a moderation analysis with episodic memory as our primary outcome variable. We will start with an unadjusted analysis. 
 
 ```{r}
 null_model_episodic <-lmer(episodic_memory ~ threat + deprivation + (1|family_id), data=midus)
 
 summary(null_model_episodic)
 confint(null_model_episodic, level = 0.95, method = "Wald")
+r.squaredGLMM(null_model_episodic)
+```
+From the model above, we can evaluate the unadjusted association. At the significance level of 0.05, we conclude threat and deprivation scores are not significant predictors of episodic memory. The slope parameters are also very small as shown by the model summary. If we evaluate model fit, we can look at the marginal and conditional r^2. The marignal r^2 is 0.0019 and the conditional r^2 is 0.279. These values are very low. Thus we say the model fit is poor. 
+
+```{r}
 plotREsim(REsim(null_model_episodic))
 ```
+
+Now let us look at association between childhood trauma and episodic memory when adjusting for confounders and covariates. 
 
 ```{r}
 episodic_model_covariates <- lmer(episodic_memory ~ threat + deprivation + age + sex + race + education + drug_use + (1|family_id),REML = FALSE, data=midus)
 
 summary(episodic_model_covariates)
-
+r.squaredGLMM(episodic_model_covariates)
 ```
+
+After adjusting for covariates, threat and deprivation are still not significant predictors at the significance level of 0.05. The slope parameters are also fairly low. In the model, sex, age, and race comparing those who identify as black to those who identify as white, is significant. We should note that the random effects off grouping by family is not as significant as random effects only explain 18.8% of the variation not explained by fixed effects. 
+
+To evaluate model fit, we see that the marginal r^2 is 0.235 and the conditional r^2 is 0.3794. These values are very low and indicate poor model fit.
 
 
 ```{r}
-confint(episodic_model_covariates, level = 0.95, method = "Wald")
-plotREsim(REsim(episodic_model_covariates))
+plot(episodic_model_covariates)
 ```
+
+The residuals plot shows us that there is constant variance across fitted values, thus assumption is met. Good!
+
+Let us now evaluate the interaction effect between aggregated drug use and trauma. 
 
 ```{r}
 episodic_model_covariates_interactions <- lmer(episodic_memory ~ threat + deprivation + age + sex + race + education + drug_use + threat*drug_use + deprivation*drug_use + (1|family_id), REML=FALSE,data=midus)
 
 summary(episodic_model_covariates_interactions)
+r.squaredGLMM(episodic_model_covariates_interactions)
 ```
-
+From the model we see that the interaction terms are not significant at the 0.05 significance level. This is our first indicator that the interaction effects between aggregated substance abuse and childhood trauma is not significant. We will now compare the two models. 
 ```{r}
 anova(episodic_model_covariates,episodic_model_covariates_interactions, test="Chi")
 ```
+
+
+The AIC did not decrease, the BIC increased, and the p-value is well above 0.05. The values indicate that the model with interactions is not significantly better than the model without interaction terms. Thus by the law of parsimony, we would choose the model without interaction terms. Though regression analysis shows us the interaction is not significant, lets conduct additional analysis. 
 
 ```{r}
 ggplot(aes(threat,episodic_memory), data = midus) + 
@@ -316,6 +478,10 @@ ggplot(aes(deprivation,episodic_memory), data = midus) +
   facet_wrap(~ drug_use) + 
   theme_classic()
 ```
+
+The plots about indicate that the correlation between childhood threat vs episodic, childhood deprivation vs episodic memory, does not significantly change by indication of drug use. 
+
+We will now investigate estimated marginal means. 
 
 ```{r}
 emm_episodic <- emmeans(episodic_model_covariates_interactions, pairwise ~ threat*drug_use, cov.keep = 3, at = list(
@@ -338,56 +504,94 @@ summary(emm_deprivation)
 summary(emtrends(episodic_model_covariates_interactions, pairwise ~ drug_use, var = "deprivation", level = 0.95))
 ```
 
+From the estimated means analysis, we see there are not significant differences in mean episodic memory z scores at different levels of deprivation or threat when controlling for substance use.
+Thus from the estimated marginal means, regression analysis, and visualizations, we conclude interaction effects between childhood trauma and substance abuse is not significant. 
+
+Lets now look at the interaction effects if we break down by specific substances. 
+
 ```{r}
 episodic_model_substances <- lmer(episodic_memory ~ age + sex + education + race +tranquilizer + stimulants + painkillers + depressants + inhallants + cocaine + hallucinogens + threat+ deprivation + (1|family_id), REML=FALSE, data=midus)
 
 summary(episodic_model_substances)
+r.squaredGLMM(episodic_model_substances)
 ```
+
+From the model above, we see none of the model parameters for the specific substances are not significant at the 0.05 level. In this model, the significant predictors are age, sex and race comparing those who identify as black with those who identify as white. WThe r^2 values are fairly low and the deviance is fairly high - two indications of poor model fit. Lets now look at the interactions of trauma to individual substances. 
+
 
 ```{r}
 episodic_model_substances_interactions <- lmer(composite_cognition ~ age + sex + education + race +tranquilizer + stimulants + painkillers + depressants + inhallants + cocaine + hallucinogens + threat+ deprivation + stimulants*threat + stimulants*deprivation + painkillers*threat + painkillers*deprivation + inhallants*threat + inhallants*deprivation + cocaine*threat + cocaine*deprivation + hallucinogens*threat + hallucinogens*deprivation + tranquilizer*threat + tranquilizer*deprivation +(1|family_id),REML=FALSE, data=midus)
 
 summary(episodic_model_substances_interactions)
+r.squaredGLMM(episodic_model_substances_interactions)
 ```
+The individual slope parameters for the interaction terms are not significant at the 0.05 significance level. Though the individual slope parameters are not significant we can look at model fit. From the model fit, we see that the marginal R^2 value is 0.315 and the conditionoal r^2 value is 0.5855 - this is OK but it is also significantly better than the model without interactions. Let's look at the residuals plot to confirm our assumptions. 
+
+```{r}
+plot(episodic_model_substances_interactions)
+```
+
+The residuals plot confirm fairly constant variance across the range of fitted values, thus the assumption is met. Good!
+
+We will now compare the models.
 
 ```{r}
 anova(episodic_model_substances,episodic_model_substances_interactions,test="Chi")
 ```
 
+From the summary we see that the AIC, BIC and deviance significantly decreases. Moreover the p-value is significantly lower than 0.05, thus we conclude the model with interactions is significantly better.Thus we would choose the model with interactions as the final model.
+
+### Conclusions
+
+From conducting regression analysis, we actually were able to gather some interesting results. When looking at aggregated substance abuse, we did not find significant results. The slope parameter estimate for drug use was not particularly high nor was it significant at the 0.05 significance level. Then after running a model with interaction effects, we found none of the interaction terms to be significant. Finally, after comparing the two models, the model with interaction terms was not significantly better, thus we conclude the interaction effect between overall substance abuse and childhood trauma is not significant. However, when breaking down substance abuse by substance, we saw different results. 
+After running a model that included specific substances as parameters, we saw some significant results. Though none of the slope parameters had a significant p-value, many of the parameter estimates indicated a major difference in episodic memory based on substance use. Moreover, we found that the model with interaction effects also was significantly different than the model with no interactions. Thus there is indication that the interaction effects are in fact significant.
+In the context of the study, we conclude there is a possible moderation effect from individual substance abuse on the association between childhood trauma and episodic memory. 
 
 ## Executive Function
 
+We will now conduct moderation analysis with executive function z scores as the outcome variable. 
+
+
+Let's start by looking at the unadjusted relationship between childhood trauma and executive functioning. 
 ```{r}
 null_model_exec <- lmer(executive_func ~ threat + deprivation + (1|family_id), data=midus)
 
 summary(null_model_exec)
-confint(null_model_exec, level = 0.95, method = "Wald")
-plotREsim(REsim(null_model_exec))
+r.squaredGLMM(null_model_exec)
+```
+From the null model, we see that deprivation is a significant predictor in executive functioning score. We would interpret the slope parameter as for every point increase in deprivation score, executive functioning decreases on average by 0.014. We also conclude that the random effects due to family are significant as it explains ~60% of the variation not explained by the fixed effects.
+If we look at model fit, we see that the marginal r^2 is 0.005, while the condition r^2 is 0.598 - not great.
 
-tab_model(null_model_exec)
+
+```{r}
+plotREsim(REsim(null_model_exec))
 ```
 
+The effects plot indicates the presence of an outlier in the dataset. 
+
+Let's look at the association of childhood trauma and executive functioning when adjusted for covariates and confounders. 
 ```{r}
 exec_model_covariates <- lmer(executive_func ~ threat + deprivation + age + sex + race + education + drug_use + (1|family_id),REML = FALSE, data=midus)
 
 summary(exec_model_covariates)
-
-tab_model(exec_model_covariates)
-
-report::report(exec_model_covariates)
-
+r.squaredGLMM(exec_model_covariates)
 ```
+
+After adjusting for the different covariates, threat and deprivation would not be significant predictors at significance level of 0.05. Moreover the parameter estimates for both threat and deprivation are quite low.Though the slope paramter for substance abuse is not significant at 0.05 significance level, it should be noted the parameter estimate is high. The model fit however is not bad. 
 
 ```{r}
 exec_model_covariates_interactions <- lmer(executive_func ~ threat + deprivation + age + sex + race + education + drug_use + threat*drug_use + deprivation*drug_use + (1|family_id), REML=FALSE,data=midus)
 
 summary(exec_model_covariates_interactions)
+r.squaredGLMM(exec_model_covariates_interactions)
 ```
-
+The interaction terms are not significant at the 0.05 significance level. This is the first indication that the interaction effects are not significant. We will now compare the models. 
 
 ```{r}
 anova(exec_model_covariates,exec_model_covariates_interactions)
 ```
+
+The AIC value does not decrease,  BIC increases, and p-value is well above 0.05. The values indicate that the model with interactions is not significantly better than the model without interactions. Based on law of parsimony we would choose the model without interactions as our final model. To further evaluate the interaction effects, we will conduct additional analysis. 
 
 ```{r}
 ggplot(aes(threat,executive_func), data = midus) + 
@@ -403,6 +607,12 @@ ggplot(aes(deprivation,executive_func), data = midus) +
   facet_wrap(~ drug_use) + 
   theme_classic()
 ```
+
+
+The plots above show that the correlation between deprivation vs executive function and threat vs executive functioning does not change significantly when controlling for substance abuse. 
+
+
+
 ```{r}
 emm_exec <- emmeans(exec_model_covariates_interactions, pairwise ~ threat*drug_use, cov.keep = 3, at = list(
   threat = c(m_threat-sd_threat, m_threat, m_threat+sd_threat)), level = 0.95)
@@ -423,18 +633,65 @@ summary(emm_deprivation)
 
 summary(emtrends(exec_model_covariates_interactions, pairwise ~ drug_use, var = "deprivation", level = 0.95))
 ```
+
+
+The estimated means analysis confirms the results above. Thus we conclude the interaction effects between aggregated substance abuse and childhood trauma scores are not significant.
+
+Let's now break down substance abuse by substance. 
+
+
 ```{r}
 exec_model_substances <- lmer(executive_func ~ age + sex + education + race +tranquilizer + stimulants + painkillers + depressants + inhallants + cocaine + hallucinogens + threat+ deprivation + (1|family_id), REML=FALSE, data=midus)
 
 summary(exec_model_substances)
+r.squaredGLMM(exec_model_substances)
 ```
+
+Of the parameters related to specific substances, the only parameter that was significant was the one regarding inhallants. Thus we interpret the slope parameter as those who indicated having used inhallants in the past 12 months on average had 0.476 lower z score for episodic memory. This is a stark difference. The overall model fit is also OK - 0.2944 marginal R^2 and 0.6313 conditional r^2. 
+
+```{r}
+plot(exec_model_substances)
+```
+
+Assumptions met, lets move on to the interaction model.
 
 ```{r}
 exec_substances_interactions <- lmer(executive_func ~ age + sex + education + race +tranquilizer + stimulants + painkillers + depressants + inhallants + cocaine + hallucinogens + threat+ deprivation + stimulants*threat + stimulants*deprivation + painkillers*threat + painkillers*deprivation + inhallants*threat + inhallants*deprivation + cocaine*threat + cocaine*deprivation + hallucinogens*threat + hallucinogens*deprivation + tranquilizer*threat + tranquilizer*deprivation +(1|family_id),REML=FALSE, data=midus)
 
 summary(exec_substances_interactions)
+r.squaredGLMM(exec_substances_interactions)
 ```
+
+
+From running the interactions model, we do not see any significant interaction terms. This is the first indication that interaction effects are not significant, let us now compare models.
+
 ```{r}
 anova(exec_model_substances,exec_substances_interactions,test="chi")
 ```
+
+```{r include=FALSE}
+midus_model <-
+  midus %>% 
+  na.omit()
+
+exec_model_substances <- lmer(executive_func ~ age + sex + education + race +tranquilizer + stimulants + painkillers + depressants + inhallants + cocaine + hallucinogens + threat+ deprivation + (1|family_id), REML=FALSE, data=midus_model)
+
+
+exec_model_covariates <- lmer(executive_func ~ threat + deprivation + age + sex + race + education + drug_use + (1|family_id),REML = FALSE, data=midus_model)
+
+anova(exec_model_covariates,exec_model_substances,test="chi")
+
+
+
+
+```
+
+From running model comparisons we see the AIC and BIC increase, and the p-vaulue is well above 0.05. Thus we conclude that the model with interactions is not significantly better and therefore choose the model without interactions. We conclude that the analysis does not indicate a moderation effect of substance use on the association between childhood trauma and executive functioning. 
+
+### Conclusions
+
+The major conclusions we can draw from our analysis regards to the significance of individual substance use parameters as opposed to overall substance use. We found certain individual paramters for substance use to be significant and have a wide range of values. Thus I believe for purposes of interpretation, we would rather choose the model that breaks down substance abuse by substance instead of aggregation. Overall, I would conclude that based on our analyses, substance use does not seem to indicate moderating effects on the association between childhood trauma and executive function cognition. 
+
+
+
 

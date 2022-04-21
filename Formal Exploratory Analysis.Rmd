@@ -1,8 +1,7 @@
 ---
 title: "Formal Exploratory Analysis"
 author: "Anand Rajan"
-date: "4/16/2022"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -10,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-```{r}
+```{r include=FALSE}
 library(tidyverse)
 library(nlme)
 library(lme4)
@@ -21,32 +20,32 @@ library(haven)
 
 ```{r merging data, echo=FALSE, warning=FALSE}
 midus_1 <- read_sav("./data/M2_P1_SURVEY_N4963_20200720.sav") %>% 
-  select(M2ID,M2FAMNUM,B1PAGE_M2,B1PRSEX,B1PF7A,B1SA62A,B1SA62B,B1SA62C,B1SA62D,B1SA62E,B1SA62F,B1SA62G,B1SA62H,B1SA62I,B1SA62J,B1PTSEI,B1PB1)
+  dplyr::select(M2ID,M2FAMNUM,B1PAGE_M2,B1PRSEX,B1PF7A,B1SA62A,B1SA62B,B1SA62C,B1SA62D,B1SA62E,B1SA62F,B1SA62G,B1SA62H,B1SA62I,B1SA62J,B1PTSEI,B1PB1)
 
 midus_3 <- read_sav("./data/M2_P3_BTACT_N4512_20211123.sav") %>% 
-         select(M2ID,B3TCOMPZ3,B3TEMZ3,B3TEFZ3) %>% 
+         dplyr::select(M2ID,B3TCOMPZ3,B3TEMZ3,B3TEFZ3) %>% 
         na.omit()
 
 project4 <- load(file='./data/project4.rda')
 
 midus_4 <-
   da29282.0001 %>% 
-  select(M2ID,B4QCT_EA,B4QCT_EN,B4QCT_MD,B4QCT_PA,B4QCT_SA,B4QCT_PN) %>% 
+  dplyr::select(M2ID,B4QCT_EA,B4QCT_EN,B4QCT_MD,B4QCT_PA,B4QCT_SA,B4QCT_PN) %>% 
   mutate(
     threat = B4QCT_EA + B4QCT_PA + B4QCT_SA,
     deprivation = B4QCT_EN + B4QCT_MD + B4QCT_PN
   ) %>% 
-  select(M2ID, threat,deprivation)
+  dplyr::select(M2ID, threat,deprivation)
 
 milwaukee <- read_tsv("./data/MKE Data.tsv") %>% 
-  select(M2ID,BACRAGE,BACRSEX,BACB1,BACF7A,BACAS62A,BACAS62B,BACAS62C,BACAS62D,BACAS62E,BACAS62F,BACAS62G,BACAS62H,BACAS62I,BACAS62J)
+  dplyr::select(M2ID,BACRAGE,BACRSEX,BACB1,BACF7A,BACAS62A,BACAS62B,BACAS62C,BACAS62D,BACAS62E,BACAS62F,BACAS62G,BACAS62H,BACAS62I,BACAS62J)
 
 midus_df1 <- dplyr::inner_join(midus_4,midus_3)
 midus_df2 <-dplyr::left_join(midus_df1,midus_1)
 midus_df <- dplyr::left_join(midus_df2,milwaukee)
 ```
 
-```{r}
+```{r echo=FALSE, warning=FALSE}
 midus <-
 midus_df %>% 
   mutate(
@@ -134,7 +133,7 @@ midus_df %>%
     drug_use = case_when(tranquilizer == 'Yes'| stimulants == 'Yes'| painkillers == 'Yes'| depressants == 'Yes' | inhallants == 'Yes' | marijuana == 'Yes' | cocaine == 'Yes' | heroin == 'Yes'  ~ 'Yes',
                          TRUE ~ 'No')
   ) %>% 
-  select(family_id,age,sex,race,education,tranquilizer,stimulants,painkillers,depressants,inhallants,marijuana,cocaine,hallucinogens,heroin,composite_cognition,episodic_memory,executive_func,threat,deprivation, drug_use) %>% 
+  dplyr::select(family_id,age,sex,race,education,tranquilizer,stimulants,painkillers,depressants,inhallants,marijuana,cocaine,hallucinogens,heroin,composite_cognition,episodic_memory,executive_func,threat,deprivation, drug_use) %>% 
   drop_na(threat,deprivation) %>% 
   janitor::clean_names()
 
@@ -348,9 +347,15 @@ To evaluate confounding we first fit a boxplot. From the box plot we see median 
 
 ```{r}
 boxplot(threat ~ race, data=midus)
-boxplot(deprivation ~ race, data=midus)
 ```
 
+```{r}
+boxplot(deprivation ~ race, data=midus)
+```
+The box plots indicate that median deprivation and threat scores are different across races.
+
+
+Thus based on our results we conclude that race is a confounding factor to the association between childhood trauma and cognition. 
 
 ### Sex
 
@@ -376,6 +381,35 @@ midus %>%
 
 knitr::kable(list(t1,t2,t3))
 ```
+
+
+From the tables constructed we see there are significant differences in cognition scores across gender.
+
+```{r}
+c1 <-
+midus %>%
+  na.omit() %>% 
+  group_by(sex) %>% 
+  summarize(
+    mean_deprivation=mean(deprivation))
+
+c2 <-
+midus %>%
+  na.omit() %>% 
+  group_by(sex) %>% 
+  summarize(
+    mean_threat=mean(threat))
+
+
+summary(lmer(deprivation ~ sex + (1|family_id), data=midus))
+summary(lmer(threat ~ sex + (1|family_id), data=midus))
+
+knitr::kable(list(c1,c2))
+```
+Though there is not a significant difference in mean deprivation score across genders, but there is a significant difference in mean threat scores across gender.
+
+
+We conclude sex to be a confounder of the relationship between childhood trauma and cognition. 
 
 ### Education
 
@@ -403,6 +437,104 @@ education_lm3 <- lmer(executive_func ~ education + (1|family_id), data=midus)
 summary(education_lm3)
 ```
 
+```{r}
+boxplot(threat ~ education, data=midus)
+boxplot(deprivation ~ education, data=midus)
+```
+
+
+
+
 ### Age
 
+```{r}
+par(mfrow=c(3,1))
+ggplot(midus,aes(x=age,y=composite_cognition)) + geom_point() + geom_smooth(method=lm)
+ggplot(midus,aes(x=age,y=episodic_memory)) + geom_point() + geom_smooth(method=lm)
+ggplot(midus,aes(x=age,y=executive_func)) + geom_point() + geom_smooth(method=lm)
 
+```
+
+
+
+
+# Self Administered Substance Abuse
+
+```{r}
+midus %>%
+  group_by(drug_use) %>% 
+  summarize(n_obs=n()) %>% 
+  knitr::kable()
+```
+
+```{r}
+boxplot(composite_cognition ~ drug_use, data=midus)
+boxplot(episodic_memory ~ drug_use, data=midus)
+boxplot(executive_func ~ drug_use, data=midus)
+```
+
+From the box plots we dont see major differences in average cognition scores between those who did or did not indicate substance use. 
+
+
+```{r}
+midus %>%
+  group_by(tranquilizer) %>% 
+  summarize(n_obs=n()) %>% 
+  knitr::kable()
+
+
+# n=34 for yes
+
+midus %>%
+  group_by(stimulants) %>% 
+  summarize(n_obs=n()) %>% 
+  knitr::kable()
+
+#n = 25
+
+midus %>%
+  group_by(inhallants) %>% 
+  summarize(n_obs=n()) %>% 
+  knitr::kable()
+
+# n = 14
+
+midus %>%
+  group_by(depressants) %>% 
+  summarize(n_obs=n()) %>% 
+  knitr::kable()
+
+#n=49
+
+midus %>%
+  group_by(marijuana) %>% 
+  summarize(n_obs=n()) %>% 
+  knitr::kable()
+
+# n = 1
+
+midus %>%
+  group_by(cocaine) %>% 
+  summarize(n_obs=n()) %>% 
+  knitr::kable()
+
+
+# n = 13
+
+midus %>%
+  group_by(hallucinogens) %>% 
+  summarize(n_obs=n()) %>% 
+  knitr::kable()
+
+# n = 13
+
+midus %>%
+  group_by(heroin) %>% 
+  summarize(n_obs=n()) %>% 
+  knitr::kable()
+
+# n = 1 
+```
+
+
+ 
